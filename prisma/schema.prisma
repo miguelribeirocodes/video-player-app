@@ -1,0 +1,92 @@
+// Prisma schema — MVP de plataforma de vídeos/cursos de psicologia.
+// SQLite no MVP. Para produção, troque o provider para "postgresql".
+//
+// O modelo já está desenhado para evoluir: as entidades User / Subscription /
+// Enrollment estão comentadas abaixo e podem ser ativadas quando entrarmos na
+// fase de venda de acessos e mensalidades.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  coverImage  String?
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  videos Video[]
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+
+  // Arquivo físico no disco (apenas o nome; o caminho vem de VIDEO_STORAGE_DIR).
+  filename    String
+  mimeType    String   @default("video/mp4")
+  sizeBytes   Int      @default(0)
+  durationSec Int?
+  thumbnail   String?
+
+  // Ordem dentro de um curso e estado de publicação.
+  position    Int      @default(0)
+  published   Boolean  @default(true)
+
+  courseId String?
+  course   Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+// ---------------------------------------------------------------------------
+// FASE 2 — venda de acessos, inscrições e mensalidades.
+// Descomente e rode `prisma migrate` quando começarmos essa etapa.
+// ---------------------------------------------------------------------------
+//
+// model User {
+//   id           String         @id @default(cuid())
+//   email        String         @unique
+//   name         String?
+//   passwordHash String
+//   role         String         @default("student") // student | admin
+//   createdAt    DateTime       @default(now())
+//   subscriptions Subscription[]
+//   enrollments   Enrollment[]
+// }
+//
+// model Subscription {
+//   id        String   @id @default(cuid())
+//   userId    String
+//   user      User     @relation(fields: [userId], references: [id])
+//   status    String   // active | canceled | past_due
+//   plan      String   // monthly | yearly
+//   provider  String?  // stripe | mercadopago...
+//   externalId String?
+//   currentPeriodEnd DateTime?
+//   createdAt DateTime @default(now())
+// }
+//
+// model Enrollment {
+//   id       String   @id @default(cuid())
+//   userId   String
+//   courseId String
+//   user     User     @relation(fields: [userId], references: [id])
+//   course   Course   @relation(fields: [courseId], references: [id])
+//   createdAt DateTime @default(now())
+//   @@unique([userId, courseId])
+// }
