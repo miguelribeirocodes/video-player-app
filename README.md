@@ -101,8 +101,50 @@ estão comentadas em `prisma/schema.prisma`. Próximos passos sugeridos:
 - Migrar storage para S3/Cloudflare R2 e SQLite → Postgres.
 - Transcodificação/HLS para streaming adaptativo em conexões móveis.
 
-## Notas de deploy
+## Deploy no Fly.io (recomendado: CLI)
 
-- SQLite e armazenamento em disco local exigem um host com filesystem
-  persistente (VPS/Render/Railway/Fly). Em plataformas serverless (ex.: Vercel),
-  o disco é efêmero — nesse caso migre storage para R2/S3 e o banco para Postgres.
+O app guarda o banco SQLite e os vídeos **em disco**. No Fly isso exige um
+**volume persistente** — por isso o deploy precisa do CLI (`flyctl`), já que o
+volume não é criado pelo "Launch from GitHub" da web.
+
+```bash
+# 1. Login
+fly auth login
+
+# 2. Criar o app a partir do fly.toml (NÃO faça deploy ainda)
+#    Troque o nome em fly.toml se "psico-cursos-sabrina" já existir.
+fly launch --no-deploy --copy-config --name psico-cursos-sabrina --region gru
+
+# 3. Criar o volume persistente (mesmo nome do mount em fly.toml: "data")
+fly volumes create data --region gru --size 3   # 3 GB; aumente conforme os vídeos
+
+# 4. Definir a senha de admin como secret (não vai pro git)
+fly secrets set ADMIN_PASSWORD="sua-senha-forte"
+
+# 5. Deploy
+fly deploy
+
+# 6. Abrir
+fly open
+```
+
+O `Dockerfile` cria um banco "base" com as tabelas no build; no primeiro boot o
+`docker-entrypoint.sh` copia esse banco para `/data/prod.db` no volume. Vídeos
+enviados ficam em `/data/videos`. Ambos sobrevivem a deploys e restarts.
+
+> **Não escale para mais de 1 máquina**: o volume é por-instância, então
+> múltiplas máquinas teriam bancos/vídeos divergentes. Mantenha 1 VM.
+
+### Sobre o "Launch from GitHub" (web)
+
+Esse fluxo é prático (redeploy automático a cada push), mas **não cria volume**.
+Sem volume, o `[[mounts]]` do `fly.toml` faz a máquina falhar no boot, e mesmo
+removendo o mount o banco/vídeos seriam apagados a cada deploy. Se quiser CD pelo
+GitHub, crie o app pelo CLI (passos acima) e depois conecte o GitHub Actions /
+auto-deploy — assim o volume já existe.
+
+## Notas gerais
+
+- SQLite + disco local exigem filesystem persistente (Fly com volume, VPS,
+  Render, Railway). Em serverless puro (ex.: Vercel) o disco é efêmero — nesse
+  caso migre storage para R2/S3 e o banco para Postgres.

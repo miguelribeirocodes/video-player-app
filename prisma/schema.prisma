@@ -7,6 +7,9 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" para rodar no seu Windows/macOS em dev; o target debian é para a
+  // imagem Docker (node:20-bookworm-slim) usada no deploy do Fly.io.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

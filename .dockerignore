@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+README.md
+npm-debug.log*
+
+# Ambiente local e bancos locais — nunca enviar para a imagem.
+.env
+.env*.local
+prisma/*.db
+prisma/*.db-journal
+
+# Vídeos enviados localmente não vão para a imagem (ficam no volume do Fly).
+storage/videos/*
+!storage/videos/.gitkeep
