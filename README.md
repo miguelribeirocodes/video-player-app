@@ -98,8 +98,12 @@ estão comentadas em `prisma/schema.prisma`. Próximos passos sugeridos:
 - Autenticação (Auth.js/Clerk) substituindo a senha de admin.
 - Papéis (admin x aluno) e proteção das rotas de vídeo por matrícula/assinatura.
 - Pagamentos/mensalidade (Stripe ou Mercado Pago) atualizando `Subscription`.
-- Migrar storage para S3/Cloudflare R2 e SQLite → Postgres.
-- Transcodificação/HLS para streaming adaptativo em conexões móveis.
+- **Base de produção: Supabase** (Postgres + Auth + Storage com CDN) — pagar o
+  plano quando necessário. Migrar SQLite → Supabase Postgres e mover os vídeos
+  do volume do Fly para o Supabase Storage (URLs assinadas). Se o egress de
+  vídeo pesar, considerar híbrido com Cloudflare R2/Bunny para os arquivos.
+- Transcodificação/HLS para streaming adaptativo em conexões móveis (via Edge
+  Function/serviço externo; Supabase não transcoda nativamente).
 
 ## Deploy no Fly.io (recomendado: CLI)
 

@@ -50,6 +50,10 @@ storage/videos/            # vídeos enviados (NÃO versionado; em prod fica no 
 - Banco **SQLite** num arquivo dentro do volume do Fly (`/data/prod.db`);
   vídeos em `/data/videos`.
 - Controle **manual** de start/stop no Fly (sem auto-start por requisição).
+- **Direção de produção definida: Supabase** (DB Postgres + Auth + Storage com
+  CDN). Vamos pagar o plano quando for necessário — o free tier não serve para
+  vídeo (cap de 50MB/arquivo, 5GB de egress/mês, projeto pausa após 1 semana
+  ociosa). Migração planejada para a fase 2 (ver roadmap).
 
 ### Estado atual (junho/2026)
 - MVP **no ar**: `https://psico-cursos-sabrina.fly.dev/`
@@ -93,14 +97,31 @@ fly secrets set ADMIN_PASSWORD="..."# trocar senha do admin
 ```
 Nunca escalar para >1 máquina (o volume é por-instância).
 
-### Roadmap — Fase 2 (venda de acessos)
+### Roadmap — Fase 2 (venda de acessos) — base: SUPABASE
+Plano de produção: consolidar tudo no **Supabase** (pagar quando necessário).
 O schema já tem `User`/`Subscription`/`Enrollment` comentados. Próximos passos:
-- Autenticação real (Auth.js/Clerk) substituindo a senha de admin.
-- Papéis (admin × aluno) e proteção dos vídeos por matrícula/assinatura.
-- Pagamentos/mensalidade (Stripe ou Mercado Pago).
-- Migrar SQLite → Postgres e storage → S3/Cloudflare R2.
-- (Opcional) transcodificação/HLS no upload para padronizar codec (resolve o
-  caso do áudio AAC) e permitir streaming adaptativo no mobile.
+- **DB**: migrar SQLite → **Supabase Postgres** (trocar `provider` no
+  `schema.prisma` para `postgresql` + migrations; `DATABASE_URL` aponta pro
+  Supabase).
+- **Auth**: substituir a senha de admin por **Supabase Auth** (usuários,
+  sessão, papéis admin × aluno).
+- **Storage**: tirar os vídeos do volume do Fly e mover para **Supabase
+  Storage** (S3-compat + Smart CDN), servindo via URLs assinadas. Uploads
+  grandes via TUS/resumable (arquivos > 6MB).
+- **Pagamentos/mensalidade**: Stripe ou Mercado Pago atualizando `Subscription`;
+  proteger vídeos por matrícula/assinatura ativa.
+- **Atenção ao egress** (banda de vídeo é o custo principal: ~US$0,09/GB, ~US$
+  0,03/GB via CDN). Se o custo crescer, avaliar **híbrido**: Supabase para
+  DB/Auth + **Cloudflare R2** (egress zero) ou **Bunny** (CDN de vídeo) para os
+  arquivos.
+- **(Opcional) transcodificação/HLS** no upload para padronizar codec (resolve o
+  caso do áudio AAC) e permitir streaming adaptativo no mobile. Supabase não faz
+  isso nativamente — exigiria Edge Function/serviço externo (Mux/Cloudflare
+  Stream/Bunny).
+
+> Preparação possível ANTES da fase 2: introduzir uma **camada de storage
+> abstrata** (driver `local` hoje, `supabase`/`r2` depois) para o upload/stream
+> não precisarem ser reescritos na migração.
 
 ### Pendências imediatas
 - [ ] Aplicar feedback da Sabrina.
